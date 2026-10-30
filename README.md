@@ -1,6 +1,6 @@
 # GraphFlow hosting prototype
 
-Stages 1–3 provide the GraphFlow baseline, execution adapter, and HTTP/SSE endpoints. The browser UI is the next stage.
+Stages 1–4 provide the GraphFlow baseline, execution adapter, HTTP/SSE endpoints, and optional embedded Explorer UI.
 
 The sample graph and state were copied from graphflow/graphFlow/ExampleApi. The state dictionary is initialized to remove a nullable warning; graph behavior is unchanged. The original graphflow repository was not modified.
 
@@ -119,3 +119,41 @@ services.AddGraphFlowHosting().AddGraph<ExampleGraphStateObject>(
 ```
 
 This is enough to build the initial UI's graph picker, topology display, example JSON editor, live node/edge highlighting, state inspection, and final result display. Predicates remain opaque: an edge evaluation event is not itself proof that the edge was taken. Rich condition labels, generated forms, and graph editing are not part of this prototype contract.
+
+## Stage 4: embedded Explorer UI
+
+The optional UI uses plain HTML, CSS, JavaScript modules, and SVG. Its assets are embedded in the host assembly; consumers need no frontend build, npm packages, CDN, or copied static files.
+
+```csharp
+app.MapGraphFlowHosting("/graphflow");
+app.MapGraphFlowUI("/graphflow/ui", apiPrefix: "/graphflow");
+```
+
+Open `/graphflow/ui/` on the application's address. The mapping redirects the slashless path so relative asset URLs resolve correctly. Custom UI/API prefixes and ASP.NET PathBase are supported. UI and API route groups can each receive the consuming application's authorization policy. The UI is same-origin; it uses the browser's existing same-origin authentication cookies and does not implement a separate login or credential store.
+
+The Explorer provides graph selection, topology with start-node and execution highlighting, input JSON editing/reset, schema inspection, normal and streaming execution, final results, and a clickable event list for state snapshots. Show latest returns from an earlier snapshot to the current state or final result. The event list retains the most recent 500 snapshots and displays the total number received. Node completion means visited, not necessarily successful; overall success is determined by the final result. Edge highlighting means evaluated, not necessarily taken.
+
+Streaming uses POST/fetch with an incremental SSE parser, including UTF-8 characters and frames split across network chunks. Disconnect stops observation and explicitly tells the user that graph execution may continue. Streams ending without an end event are treated as incomplete, not successful. No automatic retry is performed.
+
+Validation: 21 .NET tests cover engine behavior, HTTP/SSE, discovery, embedded assets, custom prefixes, and application PathBase. Four dependency-free JavaScript tests exercise SSE parsing and reader cleanup:
+
+```powershell
+node --test ui-tests/sse.test.mjs
+```
+
+In the restricted Windows environment, Node required `--preserve-symlinks --preserve-symlinks-main` before `--test` to avoid resolving an inaccessible parent directory. Browser checks verified both example branches (3/7 nodes and 11/29 events), final-only execution, invalid JSON feedback, graph failure, snapshot inspection, and restoration of the final result. A preview screenshot is saved in ui-tests/explorer-preview.png.
+
+The original example still executes at its original speed. A separate slow demonstration is now available as described below.
+
+
+
+## Slow streaming demonstration
+
+Select **Slow streaming demo** (`slow-example`) in the Explorer and click **Run with streaming**. It uses the same topology and state as `example`, with a 1-second pause inside every node function and every edge predicate, including rejected edge evaluations. Construction/discovery does not pause.
+
+The provided example input sets shouldDoTheThing=true: seven node executions plus seven edge evaluations take roughly 14 seconds and emit 29 progress events, followed by end. Set shouldDoTheThing=false for the shorter path: three nodes and two edges, about 5 seconds. The fast example remains available separately.
+
+These sleeps are deliberate demo-only blocking work because GraphFlow's node and predicate interfaces are synchronous. Disconnecting the UI stops observation, not execution. Each run wraps a fresh graph so delays do not accumulate across runs.
+
+Validation now includes 22 .NET tests. The slow-demo HTTP test checks all 14 start/complete pairs arrive with visible pauses, ordered progress, and the expected final state. The browser demonstration also verified live highlighting and completion. Screenshot: ui-tests/slow-demo-preview.png.
+

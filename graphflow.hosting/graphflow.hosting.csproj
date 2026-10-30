@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Hosting/UI/*" LogicalName="GraphFlow.Hosting.UI.%(Filename)%(Extension)" />
     <PackageReference Include="bcn.GraphFlow" Version="1.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
   </ItemGroup>

@@ -1,6 +1,26 @@
 @graphflow.hosting_HostAddress = http://localhost:5272
 
-GET {{graphflow.hosting_HostAddress}}/weatherforecast/
+GET {{graphflow.hosting_HostAddress}}/graphflow/graphs
 Accept: application/json
+
+###
+
+GET {{graphflow.hosting_HostAddress}}/graphflow/graphs/example
+Accept: application/json
+
+###
+
+POST {{graphflow.hosting_HostAddress}}/graphflow/graphs/example/runs
+Content-Type: application/json
+
+{"nodeOutputs":{},"nodeCount":0,"shouldDoTheThing":true}
+
+###
+
+POST {{graphflow.hosting_HostAddress}}/graphflow/graphs/example/runs/stream
+Content-Type: application/json
+Accept: text/event-stream
+
+{"nodeOutputs":{},"nodeCount":0,"shouldDoTheThing":true}
 
 ###

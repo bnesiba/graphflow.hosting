@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GraphFlow · Explorer</title><link rel="stylesheet" href="./style.css">
+<script type="module" src="./app.js"></script>
+</head>
+<body>
+<header><div class="brand"><span class="mark">◇</span> GraphFlow <span class="subtle">/ Explorer</span></div><span class="tag">HOSTING PROTOTYPE</span></header>
+<main>
+<section class="intro"><div><p class="eyebrow">EXECUTION WORKSPACE</p><h1>Follow the flow.</h1><p class="subtle">Explore a graph, shape its input, and watch its state change.</p></div><div id="status" role="status" aria-live="polite" data-kind="idle">Connecting…</div></section>
+<div id="error" role="alert" hidden></div>
+<div class="workspace">
+<aside class="panel controls">
+<label for="graphs">REGISTERED GRAPH</label><div class="picker"><select id="graphs" disabled><option>Loading…</option></select><button id="refresh" title="Reload graph list" aria-label="Reload graph list">↻</button></div>
+<h2 id="graph-title">Choose a graph</h2><p id="description" class="subtle">Graph details will appear here.</p>
+<div class="section-label"><label for="input">INPUT JSON</label><button id="reset" class="text-button" disabled>Reset input</button></div>
+<textarea id="input" spellcheck="false" aria-describedby="input-help" disabled>{}</textarea><p id="input-help" class="hint">Edit the initial state before starting a run.</p>
+<div class="actions"><button id="stream" class="primary" disabled>Run with streaming <span>↗</span></button><button id="run" disabled>Run · final result only</button><button id="disconnect" hidden>Disconnect stream</button></div>
+<details><summary>Input schema</summary><pre id="schema">No graph selected.</pre></details>
+</aside>
+<section class="panel topology"><div class="panel-heading"><div><p class="eyebrow">TOPOLOGY</p><h2 id="topology-title">Graph map</h2></div><span id="counts" class="subtle"></span></div>
+<div class="legend"><span><i class="dot idle"></i>Ready</span><span><i class="dot active"></i>Active</span><span><i class="dot done"></i>Visited</span></div>
+<div class="canvas"><svg id="graph" role="group" aria-label="Graph topology"></svg><p id="empty-map" class="subtle">Select a graph to see its nodes and connections.</p></div>
+<p id="selection" class="map-caption">Select a node or edge for its name. Edge highlights indicate evaluation, not a branch decision.</p>
+</section>
+<section class="panel output"><div class="panel-heading"><div><p class="eyebrow">OUTPUT</p><h2 id="output-title">State & result</h2></div><div><button id="latest" class="text-button" hidden>Show latest</button><div id="run-id" class="subtle"></div></div></div><pre id="state">Your result will appear here.</pre></section>
+<section class="panel activity"><div class="panel-heading"><div><p class="eyebrow">ACTIVITY</p><h2>Execution events</h2></div><span id="event-count" class="subtle">0 events</span></div><p class="hint">Select an event to inspect its state snapshot. Most recent 500 events are retained.</p><ol id="events"><li class="placeholder">Start a streaming run to follow execution.</li></ol></section>
+</div>
+<footer>GraphFlow Hosting <span>One graph. Every step.</span></footer>
+</main>
+</body></html>
+
+

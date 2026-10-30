@@ -40,6 +40,85 @@ public class GraphHttpTests
         Assert.Equal(399, sequence);
         Assert.Equal(1, ends);
     }
+    [Fact]
+    public async Task EmbeddedUiUsesConfiguredApiAndServesOnlyKnownAssets()
+    {
+        await using var host = new Host(); await host.Start();
+        using var response = await host.Client.GetAsync("/explorer");
+        Assert.EndsWith("/explorer/", response.RequestMessage!.RequestUri!.AbsolutePath);
+        Assert.Equal("text/html", response.Content.Headers.ContentType!.MediaType);
+        Assert.Contains("./app.js", await response.Content.ReadAsStringAsync());
+        using var config = JsonDocument.Parse(await host.Client.GetStringAsync("/explorer/config"));
+        Assert.Equal("/custom", config.RootElement.GetProperty("apiPrefix").GetString());
+        foreach (var asset in new[] { "app.js", "sse.mjs", "style.css" })
+        {
+            using var file = await host.Client.GetAsync("/explorer/" + asset);
+            Assert.Equal(HttpStatusCode.OK, file.StatusCode);
+            Assert.NotEmpty(await file.Content.ReadAsStringAsync());
+        }
+        Assert.Equal(HttpStatusCode.NotFound, (await host.Client.GetAsync("/explorer/secret.txt")).StatusCode);
+    }
+
+    [Fact]
+    public async Task UiPreservesApplicationPathBase()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.Logging.ClearProviders(); builder.WebHost.UseUrls("http://127.0.0.1:0");
+        await using var app = builder.Build();
+        app.UsePathBase("/mounted"); app.MapGraphFlowUI("/explorer", "/custom");
+        await app.StartAsync();
+        var address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        using var client = new HttpClient { BaseAddress = new Uri(address) };
+        using var page = await client.GetAsync("/mounted/explorer");
+        Assert.EndsWith("/mounted/explorer/", page.RequestMessage!.RequestUri!.AbsolutePath);
+        using var config = JsonDocument.Parse(await client.GetStringAsync("/mounted/explorer/config"));
+        Assert.Equal("/mounted/custom", config.RootElement.GetProperty("apiPrefix").GetString());
+    }
+
+    [Fact]
+    public async Task SlowDemoStreamsEachNodeAndEdgePauseAndPreservesResult()
+    {
+        await using var host = new Host(); await host.Start();
+        // Discovery constructs wrappers but never sleeps or executes them.
+        var details = await host.Client.GetFromJsonAsync<GraphDetails>("/custom/graphs/slow-example");
+        Assert.Equal(5, details!.Nodes.Count);
+        Assert.Equal(5, details.Edges.Count);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        using var response = await host.Stream("slow-example", true);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var started = new Dictionary<string, TimeSpan>();
+        var pauses = 0;
+        var progressCount = 0;
+        GraphRunResult? result = null;
+        await foreach (var item in SseParser.Create(await response.Content.ReadAsStreamAsync()).EnumerateAsync(timeout.Token))
+        {
+            if (item.EventType == "end")
+            {
+                Assert.Null(result);
+                result = JsonSerializer.Deserialize<GraphRunResult>(item.Data, JsonSerializerOptions.Web);
+                continue;
+            }
+            var progress = JsonSerializer.Deserialize<GraphProgress>(item.Data, JsonSerializerOptions.Web)!;
+            progressCount++;
+            Assert.Equal(progressCount, progress.Sequence);
+            if (progress.EventType is "NodeStart" or "EdgeStart")
+                started[progress.ObjectName] = watch.Elapsed;
+            if (progress.EventType is "NodeComplete" or "EdgeComplete")
+            {
+                // If the server buffered the whole run, these pairs would arrive together.
+                Assert.True(watch.Elapsed - started[progress.ObjectName] >= TimeSpan.FromSeconds(0.8),
+                    $"Expected a visible pause for {progress.ObjectName}.");
+                pauses++;
+            }
+        }
+        Assert.Equal(14, pauses); // Seven node executions and seven edge evaluations, including a rejected edge.
+        Assert.Equal(29, progressCount);
+        Assert.NotNull(result);
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal(7, result.State!.Value.GetProperty("nodeCount").GetInt32());
+        Assert.Equal("Node1RunNode1Run", result.State.Value.GetProperty("nodeOutputs").GetProperty("Node1").GetString());
+        Assert.Equal("Node2DidTheThingNode2DidNotDoTheThing", result.State.Value.GetProperty("nodeOutputs").GetProperty("Node2").GetString());
+    }
     private sealed class Host : IAsyncDisposable
     {
         public WebApplication App { get; }
@@ -52,8 +131,10 @@ public class GraphHttpTests
             builder.Logging.ClearProviders();
             builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
             builder.Services.AddScoped<ExampleGraph>();
+            builder.Services.AddScoped<SlowExampleGraph>();
             builder.Services.AddGraphFlowHosting()
                 .AddGraph<ExampleGraphStateObject>("example", sp => sp.GetRequiredService<ExampleGraph>().GetGraph())
+                .AddGraph<ExampleGraphStateObject>("slow-example", sp => sp.GetRequiredService<SlowExampleGraph>().GetGraph())
                 .AddGraph<ExampleGraphStateObject>("long", sp =>
                 {
                     var graph = sp.GetRequiredService<GraphBuilder<ExampleGraphStateObject>>().GetExecutableGraph();
@@ -87,6 +168,7 @@ public class GraphHttpTests
                 });
             App = builder.Build();
             App.MapGraphFlowHosting("/custom");
+            App.MapGraphFlowUI("/explorer", "/custom");
             App.MapGet("/existing", () => "still here");
         }
         public async Task Start()
@@ -114,7 +196,7 @@ public class GraphHttpTests
         await using var host = new Host(); await host.Start();
         Assert.Equal("still here", await host.Client.GetStringAsync("/existing"));
         var graphs = await host.Client.GetFromJsonAsync<GraphDescription[]>("/custom/graphs");
-        Assert.Equal(4, graphs!.Length);
+        Assert.Equal(5, graphs!.Length);
         var graph = await host.Client.GetFromJsonAsync<GraphDetails>("/custom/graphs/example");
         Assert.Equal("ExampleGraphStateObject", graph!.StateType);
         Assert.Equal(5, graph.Nodes.Count);
@@ -213,6 +295,9 @@ public class GraphHttpTests
         Assert.Equal("still here", await host.Client.GetStringAsync("/existing"));
     }
 }
+
+
+
 
 
 
