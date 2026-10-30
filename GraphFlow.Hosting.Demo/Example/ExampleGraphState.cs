@@ -1,7 +1,7 @@
 using GraphFlow.models;
 using GraphFlow.flow;
 
-namespace ExampleApi.Models
+namespace GraphFlow.Hosting.Demo.Models
 {
     public class ExampleGraphStateObject
     {
@@ -20,4 +20,5 @@ namespace ExampleApi.Models
         }
     }
 }
+
 

@@ -11,13 +11,18 @@ public sealed record HostedGraphInfo(string Name, Type StateType, string? Displa
 public sealed record GraphProgress(Guid RunId, Guid ExecutionId, long Sequence,
     string EventType, string ObjectName, Guid Checkpoint, JsonElement State);
 public sealed record GraphRunResult(Guid RunId, string GraphName, bool Succeeded,
-    JsonElement? State, string? Error);
+    JsonElement? State, string? Error)
+{
+    public GraphExecutionSummary? Execution { get; init; }
+}
 
 public static class HostingExtensions
 {
     public static GraphHostingBuilder AddGraphFlowHosting(this IServiceCollection services)
     {
         services.TryAddSingleton(sp => new GraphRunner(sp.GetRequiredService<IServiceScopeFactory>(), sp.GetServices<GraphRegistration>()));
+        services.TryAddSingleton<IGraphRunner>(sp => sp.GetRequiredService<GraphRunner>());
+        services.TryAddSingleton<IGraphCatalog>(sp => sp.GetRequiredService<GraphRunner>());
         return new GraphHostingBuilder(services);
     }
 }
@@ -123,12 +128,23 @@ internal sealed class GraphRegistration<T>(string name, Func<IServiceProvider, E
         return new GraphRunResult(runId, name, succeeded,
             JsonSerializer.SerializeToElement(result.StateObject, JsonOptions),
             callbackError is not null ? "Progress delivery failed." :
-            succeeded ? null : "Graph execution failed; the engine may not provide error details.");
+            succeeded ? null : "Graph execution failed; the engine may not provide error details.")
+        {
+            Execution = new GraphExecutionSummary(
+                metadata.NodeRuns.Values.GroupBy(n => n.NodeName).Select(g =>
+                    new NodeExecutionSummary(g.Key, g.Count(), g.Count(n => n.Succeeded == false),
+                        g.Count(n => n.Succeeded is null))).ToArray(),
+                metadata.EdgeRuns.Values.GroupBy(e => e.EdgeName).Select(g =>
+                    new EdgeExecutionSummary(g.Key, g.Count(),
+                        g.Count(e => e.Succeeded == true && e.Evaluation),
+                        g.Count(e => e.Succeeded == true && !e.Evaluation),
+                        g.Count(e => e.Succeeded == false), g.Count(e => e.Succeeded is null))).ToArray())
+        };
     }
 }
 
 /// <summary>Synchronous execution boundary. Transport scheduling belongs to the API layer.</summary>
-public sealed class GraphRunner
+public sealed class GraphRunner : IGraphRunner, IGraphCatalog
 {
     private readonly IServiceScopeFactory scopes;
     private readonly IReadOnlyDictionary<string, GraphRegistration> graphs;
@@ -167,6 +183,7 @@ public sealed class GraphRunner
         }
     }
 }
+
 
 
 

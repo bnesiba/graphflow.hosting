@@ -1,6 +1,6 @@
 using System.Text.Json;
-using ExampleApi;
-using ExampleApi.Models;
+using GraphFlow.Hosting.Demo;
+using GraphFlow.Hosting.Demo.Models;
 using GraphFlow.Hosting;
 using GraphFlow.util;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,6 +8,51 @@ using Xunit;
 
 public class GraphRunnerTests
 {
+    [Theory]
+    [InlineData(false, 3, 2)]
+    [InlineData(true, 7, 7)]
+    public void FinalResultDescribesVisitedNodesAndEvaluatedEdges(bool loop, int nodeCount, int edgeCount)
+    {
+        using var provider = CreateProvider();
+        var runner = provider.GetRequiredService<IGraphRunner>();
+        var input = ExampleGraphStateObject.DefaultValue(); input.ShouldDoTheThing = loop;
+        var result = runner.Run("example", JsonSerializer.SerializeToElement(input));
+        var summary = Assert.IsType<GraphExecutionSummary>(result.Execution);
+        Assert.Equal(nodeCount, summary.Nodes.Sum(n => n.Executions));
+        Assert.Equal(edgeCount, summary.Edges.Sum(e => e.Evaluations));
+        Assert.Equal(loop ? 2 : 1, summary.Nodes.Single(n => n.Name == "Node1").Executions);
+        var branch = summary.Edges.Single(e => e.Name == "Node2_Node3_edge_0");
+        Assert.Equal(1, branch.Followed);
+        Assert.Equal(loop ? 1 : 0, branch.Rejected);
+        if (!loop)
+        {
+            Assert.DoesNotContain(summary.Nodes, n => n.Name == "Node4");
+            Assert.DoesNotContain(summary.Edges, e => e.Name == "Node2_Node4_edge_1");
+        }
+        Assert.All(summary.Nodes, n => { Assert.Equal(0, n.Failures); Assert.Equal(0, n.Incomplete); });
+    }
+
+    [Fact]
+    public void FinalResultPreservesRejectedEdgesAndFailedNodes()
+    {
+        using var provider = CreateProvider();
+        var failed = provider.GetRequiredService<IGraphRunner>().Run("failure", JsonSerializer.SerializeToElement(new OtherState()));
+        Assert.False(failed.Succeeded);
+        Assert.Equal(1, Assert.Single(failed.Execution!.Nodes).Failures);
+        var services = new ServiceCollection();
+        services.AddGraphFlowHosting().AddGraph<OtherState>("reject", sp =>
+        {
+            var graph = sp.GetRequiredService<GraphBuilder<OtherState>>().GetExecutableGraph();
+            graph.AddNode("start", s => s); graph.AddNode("unvisited", s => s);
+            graph.AddEdge("start", "unvisited", _ => false); graph.SetStartNode("start");
+            return graph;
+        });
+        using var rejecting = services.BuildServiceProvider();
+        var result = rejecting.GetRequiredService<IGraphRunner>().Run("reject", JsonSerializer.SerializeToElement(new OtherState()));
+        Assert.Single(result.Execution!.Nodes);
+        var edge = Assert.Single(result.Execution.Edges);
+        Assert.Equal(1, edge.Rejected); Assert.Equal(0, edge.Followed);
+    }
     private sealed class ScopeProbe : IDisposable
     {
         public bool Disposed { get; private set; }
@@ -141,4 +186,6 @@ public class GraphRunnerTests
         Assert.Throws<ArgumentException>(() => builder.AddGraph<OtherState>("duplicate", _ => null!));
     }
 }
+
+
 

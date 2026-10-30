@@ -1,5 +1,5 @@
-using ExampleApi;
-using ExampleApi.Models;
+using GraphFlow.Hosting.Demo;
+using GraphFlow.Hosting.Demo.Models;
 using GraphFlow.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,6 +29,7 @@ app.MapGraphFlowHosting();
 app.MapGraphFlowUI();
 
 app.Run();
+
 
 
 

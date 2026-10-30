@@ -1,6 +1,6 @@
 using System.Text.Json;
-using ExampleApi;
-using ExampleApi.Models;
+using GraphFlow.Hosting.Demo;
+using GraphFlow.Hosting.Demo.Models;
 using GraphFlow.Hosting;
 using GraphFlow.util;
 using Microsoft.Extensions.DependencyInjection;
@@ -99,5 +99,6 @@ public class GraphDiscoveryTests
         Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<GraphRunner>().Describe("invalid"));
     }
 }
+
 
 

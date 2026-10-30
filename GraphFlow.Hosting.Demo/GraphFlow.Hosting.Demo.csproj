@@ -1,15 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
-
   <ItemGroup>
-    <EmbeddedResource Include="Hosting/UI/*" LogicalName="GraphFlow.Hosting.UI.%(Filename)%(Extension)" />
-    <PackageReference Include="bcn.GraphFlow" Version="1.1.0" />
+    <ProjectReference Include="../GraphFlow.Hosting.AspNetCore/GraphFlow.Hosting.AspNetCore.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
   </ItemGroup>
-
 </Project>

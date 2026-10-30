@@ -22,7 +22,7 @@ function resetOutput() {
     $('events').replaceChildren(); $('event-count').textContent = '0 events';
     $('run-id').textContent = ''; $('state').textContent = 'Waiting for execution…';
     $('output-title').textContent = 'State & result';
-    for (const item of [...nodes.values(), ...edges.values()]) item.classList.remove('active', 'visited');
+    clearExecution();
 }
 async function selectGraph() {
     graph = null; setBusy(true); error();
@@ -59,8 +59,9 @@ function svgElement(tag, attrs = {}, text) {
     return element;
 }
 function selectable(element, label) {
+    element.dataset.label = label;
     element.setAttribute('tabindex', '0'); element.setAttribute('role', 'button'); element.setAttribute('aria-label', label);
-    const select = () => $('selection').textContent = label;
+    const select = () => $('selection').textContent = element.dataset.summary || label;
     element.addEventListener('click', select);
     element.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(); } });
 }
@@ -124,10 +125,40 @@ function onProgress(progress) {
     li.append(button); $('events').append(li); if ($('events').children.length > 500) $('events').firstElementChild.remove();
     $('events').scrollTop = $('events').scrollHeight;
 }
+function clearExecution() {
+    for (const item of [...nodes.values(), ...edges.values()]) {
+        item.classList.remove('active', 'visited', 'evaluated', 'failed', 'incomplete');
+        delete item.dataset.summary;
+        item.setAttribute('aria-label', item.dataset.label);
+        item.querySelector('title').textContent = item.dataset.label;
+    }
+    $('selection').textContent = 'Live edge highlights indicate evaluation. The final graph shows which edges were followed.';
+}
+function showExecution(summary) {
+    clearExecution();
+    const annotate = (item, description, classes) => {
+        if (!item) return;
+        item.classList.add(...classes);
+        item.dataset.summary = `${item.dataset.label} · ${description}`;
+        item.setAttribute('aria-label', item.dataset.summary);
+        item.querySelector('title').textContent = item.dataset.summary;
+    };
+    for (const node of summary.nodes) {
+        annotate(nodes.get(node.name), `${node.executions} executions, ${node.failures} failed, ${node.incomplete} incomplete`,
+            [node.failures ? 'failed' : node.incomplete ? 'incomplete' : 'visited']);
+    }
+    for (const edge of summary.edges) {
+        annotate(edges.get(edge.name), `${edge.evaluations} evaluations, ${edge.followed} followed, ${edge.rejected} rejected, ${edge.failures} failed, ${edge.incomplete} incomplete`,
+            [edge.failures ? 'failed' : edge.incomplete ? 'incomplete' : edge.followed ? 'visited' : 'evaluated']);
+    }
+    $('selection').textContent = 'Post-run graph: green edges were followed; dashed edges were only evaluated. Select a node or edge for counts.';
+}
 function finish(result) {
     latest = { title: 'Final result', value: result }; $('latest').hidden = false; selectedEvent = false;
     $('run-id').textContent = result.runId; $('output-title').textContent = 'Final result'; $('state').textContent = pretty(result);
     for (const item of [...nodes.values(), ...edges.values()]) item.classList.remove('active');
+    if (result.execution) showExecution(result.execution);
+    else $('selection').textContent = 'Execution summary unavailable. Any highlights are from received progress events only.';
     status(result.succeeded ? 'Completed' : 'Graph failed', result.succeeded ? 'success' : 'error');
     if (!result.succeeded) error(result.error || 'Graph execution failed.');
 }

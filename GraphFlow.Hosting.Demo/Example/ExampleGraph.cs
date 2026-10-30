@@ -1,8 +1,8 @@
-﻿using ExampleApi.Models;
+using GraphFlow.Hosting.Demo.Models;
 using GraphFlow.models;
 using GraphFlow.util;
 
-namespace ExampleApi
+namespace GraphFlow.Hosting.Demo
 {
     //        [Node1] <---------
     //           |             |
@@ -125,3 +125,4 @@ namespace ExampleApi
         }
     }
 }
+

@@ -1,5 +1,5 @@
-using ExampleApi;
-using ExampleApi.Models;
+using GraphFlow.Hosting.Demo;
+using GraphFlow.Hosting.Demo.Models;
 using GraphFlow.models;
 using GraphFlow.util;
 using Microsoft.Extensions.DependencyInjection;
@@ -73,3 +73,4 @@ public class ExampleGraphBaselineTests(ITestOutputHelper output)
         output.WriteLine(string.Join(Environment.NewLine, events.Select((e, i) => $"{i + 1}: {e.Type} {e.Name} count={e.Count}")));
     }
 }
+

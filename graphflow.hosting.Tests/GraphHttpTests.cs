@@ -3,8 +3,8 @@ using System.Net.Http.Json;
 using System.Net.ServerSentEvents;
 using System.Text;
 using System.Text.Json;
-using ExampleApi;
-using ExampleApi.Models;
+using GraphFlow.Hosting.Demo;
+using GraphFlow.Hosting.Demo.Models;
 using GraphFlow.Hosting;
 using GraphFlow.util;
 using Microsoft.AspNetCore.Builder;
@@ -235,6 +235,8 @@ public class GraphHttpTests
         Assert.True(result.Succeeded, result.Error);
         Assert.Equal(count, result.State!.Value.GetProperty("nodeCount").GetInt32());
         Assert.Equal(normal.State!.Value.ToString(), result.State.Value.ToString());
+        Assert.NotNull(normal.Execution);
+        Assert.Equal(JsonSerializer.Serialize(normal.Execution), JsonSerializer.Serialize(result.Execution));
         var progress = events.Take(progressCount).Select(e => JsonSerializer.Deserialize<GraphProgress>(e.Data, JsonSerializerOptions.Web)!).ToArray();
         Assert.All(progress, e => Assert.Equal(result.RunId, e.RunId));
         Assert.Equal(Enumerable.Range(1, progressCount).Select(i => (long)i), progress.Select(e => e.Sequence));
@@ -295,6 +297,8 @@ public class GraphHttpTests
         Assert.Equal("still here", await host.Client.GetStringAsync("/existing"));
     }
 }
+
+
 
 
 

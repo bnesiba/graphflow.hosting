@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readEvents } from '../graphflow.hosting/Hosting/UI/sse.mjs';
+import { readEvents } from '../GraphFlow.Hosting.AspNetCore/UI/sse.mjs';
 const encode = new TextEncoder();
 async function parse(chunks) {
     const body = new ReadableStream({ start(c) { for (const chunk of chunks) c.enqueue(chunk); c.close(); } });
@@ -28,3 +28,4 @@ test('breaking after end cancels the reader', async () => {
     for await (const event of readEvents(stream)) { assert.equal(event.type, 'end'); break; }
     assert.equal(canceled, true);
 });
+

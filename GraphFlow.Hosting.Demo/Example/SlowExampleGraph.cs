@@ -1,7 +1,7 @@
-using ExampleApi.Models;
+using GraphFlow.Hosting.Demo.Models;
 using GraphFlow.models;
 
-namespace ExampleApi;
+namespace GraphFlow.Hosting.Demo;
 
 /// <summary>A demo-only version of the example graph, paced for watching SSE progress.</summary>
 public sealed class SlowExampleGraph(ExampleGraph example)
@@ -37,4 +37,5 @@ public sealed class SlowExampleGraph(ExampleGraph example)
         ShouldDoTheThing = true
     };
 }
+
 

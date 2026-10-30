@@ -16,8 +16,8 @@ public static class GraphHostingEndpoints
         string prefix = "/graphflow")
     {
         var group = endpoints.MapGroup(prefix);
-        group.MapGet("/graphs", (GraphRunner runner) =>
-            runner.Graphs.Select(Describe));
+        group.MapGet("/graphs", (IGraphCatalog catalog) =>
+            catalog.Graphs.Select(Describe));
         group.MapGet("/graphs/{name}", Details);
         group.MapPost("/graphs/{name}/runs", Execute);
         group.MapPost("/graphs/{name}/runs/stream", Stream);
@@ -26,10 +26,10 @@ public static class GraphHostingEndpoints
 
     private static GraphDescription Describe(HostedGraphInfo graph) => new(graph.Name, graph.StateType.Name, graph.DisplayName, graph.Description);
 
-    private static IResult Details(string name, GraphRunner runner, ILogger<GraphRunner> logger)
+    private static IResult Details(string name, IGraphCatalog catalog, ILogger<IGraphCatalog> logger)
     {
-        if (!runner.Graphs.Any(g => g.Name == name)) return Results.NotFound();
-        try { return Results.Ok(runner.Describe(name)); }
+        if (!catalog.Graphs.Any(g => g.Name == name)) return Results.NotFound();
+        try { return Results.Ok(catalog.Describe(name)); }
         catch (Exception ex)
         {
             logger.LogError(ex, "Unable to describe graph {GraphName}", name);
@@ -37,9 +37,9 @@ public static class GraphHostingEndpoints
         }
     }
 
-    private static IResult? Validate(GraphRunner runner, string name, JsonElement input)
+    private static IResult? Validate(IGraphCatalog catalog, string name, JsonElement input)
     {
-        var graph = runner.Graphs.FirstOrDefault(g => g.Name == name);
+        var graph = catalog.Graphs.FirstOrDefault(g => g.Name == name);
         if (graph is null) return Results.NotFound();
         try
         {
@@ -53,20 +53,20 @@ public static class GraphHostingEndpoints
         return null;
     }
 
-    private static async Task<IResult> Execute(string name, JsonElement input, GraphRunner runner)
+    private static async Task<IResult> Execute(string name, JsonElement input, IGraphRunner runner, IGraphCatalog catalog)
     {
-        if (Validate(runner, name, input) is { } error) return error;
+        if (Validate(catalog, name, input) is { } error) return error;
         var result = await Task.Run(() => runner.Run(name, input));
         return Results.Json(result, statusCode: result.Succeeded ? 200 : 422);
     }
 
-    private static IResult Stream(string name, JsonElement input, GraphRunner runner)
+    private static IResult Stream(string name, JsonElement input, IGraphRunner runner, IGraphCatalog catalog)
     {
-        if (Validate(runner, name, input) is { } error) return error;
+        if (Validate(catalog, name, input) is { } error) return error;
         return TypedResults.ServerSentEvents(Events(runner, name, input.Clone()));
     }
 
-    private static async IAsyncEnumerable<SseItem<JsonElement>> Events(GraphRunner runner,
+    private static async IAsyncEnumerable<SseItem<JsonElement>> Events(IGraphRunner runner,
         string name, JsonElement input, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // Bound queued snapshots. A slow client applies backpressure to the synchronous producer.
@@ -113,4 +113,5 @@ public static class GraphHostingEndpoints
         }
     }
 }
+
 
