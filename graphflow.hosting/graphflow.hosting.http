@@ -1,0 +1,6 @@
+@graphflow.hosting_HostAddress = http://localhost:5272
+
+GET {{graphflow.hosting_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

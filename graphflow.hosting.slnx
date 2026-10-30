@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="graphflow.hosting/graphflow.hosting.csproj" />
+  <Project Path="graphflow.hosting.Tests/graphflow.hosting.Tests.csproj" />
+</Solution>
