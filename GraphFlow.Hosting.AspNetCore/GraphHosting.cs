@@ -29,6 +29,27 @@ public static class HostingExtensions
 
 public sealed class GraphHostingBuilder(IServiceCollection services)
 {
+    /// <summary>Registers a scoped definition with metadata supplied by its instance properties.</summary>
+    public GraphHostingBuilder AddGraph<TGraph, TState>()
+        where TGraph : class, IHostedGraph<TState>
+        where TState : class
+    {
+        EnsureGraphFlow<TState>();
+        services.TryAddScoped<TGraph>();
+        services.AddSingleton<GraphRegistration>(provider =>
+        {
+            // Snapshot metadata once, without retaining the scoped definition or its dependencies.
+            using var scope = provider.CreateScope();
+            var definition = scope.ServiceProvider.GetRequiredService<TGraph>();
+            var name = definition.Name;
+            ArgumentException.ThrowIfNullOrWhiteSpace(name);
+            return new GraphRegistration<TState>(name,
+                sp => sp.GetRequiredService<TGraph>().GetGraph(),
+                new(definition.DisplayName, definition.Description, definition.ExampleInput));
+        });
+        return this;
+    }
+
     public GraphHostingBuilder AddGraph<T>(string name, Func<IServiceProvider, ExecutableGraph<T>> factory, GraphPresentation<T>? presentation = null)
         where T : class
     {
@@ -39,10 +60,15 @@ public sealed class GraphHostingBuilder(IServiceCollection services)
             throw new ArgumentException($"Graph '{name}' is already registered.", nameof(name));
 
         // Register the engine once per state type, including when the host already registered it.
-        if (!services.Any(d => d.ServiceType == typeof(GraphBuilder<T>)))
-            services.UseGraphFlow<T>();
+        EnsureGraphFlow<T>();
         services.AddSingleton<GraphRegistration>(new GraphRegistration<T>(name, factory, presentation));
         return this;
+    }
+
+    private void EnsureGraphFlow<T>() where T : class
+    {
+        if (!services.Any(d => d.ServiceType == typeof(GraphBuilder<T>)))
+            services.UseGraphFlow<T>();
     }
 }
 

@@ -10,13 +10,7 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.WebHost.UseUrls("http://127.0.0.1:0");
-builder.Services.AddGraphFlowHosting().AddGraph<CounterState>("counter", sp =>
-{
-    var graph = sp.GetRequiredService<GraphBuilder<CounterState>>().GetExecutableGraph();
-    graph.AddNode("increment", state => { state.Value++; return state; });
-    graph.SetStartNode("increment");
-    return graph;
-}, new("Counter", "A graph defined by the consuming application.", new CounterState()));
+builder.Services.AddGraphFlowHosting().AddGraph<CounterGraph, CounterState>();
 await using var app = builder.Build();
 app.UsePathBase("/mounted");
 app.MapGet("/existing", () => "existing API");
@@ -72,4 +66,18 @@ static void Check(bool condition, string check)
     if (!condition) throw new InvalidOperationException("Package validation failed: " + check);
 }
 public sealed class CounterState { public int Value { get; set; } }
+public sealed class CounterGraph(GraphBuilder<CounterState> builder) : IHostedGraph<CounterState>
+{
+    public string Name => "counter";
+    public string DisplayName => "Counter";
+    public string Description => "A graph defined by the consuming application.";
+    public CounterState ExampleInput => new();
+    public GraphFlow.models.ExecutableGraph<CounterState> GetGraph()
+    {
+        var graph = builder.GetExecutableGraph();
+        graph.AddNode("increment", state => { state.Value++; return state; });
+        graph.SetStartNode("increment");
+        return graph;
+    }
+}
 

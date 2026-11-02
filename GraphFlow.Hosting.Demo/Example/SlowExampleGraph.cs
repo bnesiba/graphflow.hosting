@@ -4,8 +4,12 @@ using GraphFlow.models;
 namespace GraphFlow.Hosting.Demo;
 
 /// <summary>A demo-only version of the example graph, paced for watching SSE progress.</summary>
-public sealed class SlowExampleGraph(ExampleGraph example)
+public sealed class SlowExampleGraph(ExampleGraph example) : IHostedGraph<ExampleGraphStateObject>
 {
+    public string Name => "slow-example";
+    public string DisplayName => "Slow streaming demo";
+    public string Description => "Pauses 1 second at each node and edge evaluation. The default loop takes about 14 seconds.";
+
     public ExecutableGraph<ExampleGraphStateObject> GetGraph()
     {
         // Wrap a fresh graph so discovery remains immediate and the fast example is unchanged.
@@ -31,7 +35,7 @@ public sealed class SlowExampleGraph(ExampleGraph example)
         return graph;
     }
 
-    public static ExampleGraphStateObject ExampleInput() => new()
+    public ExampleGraphStateObject ExampleInput => new()
     {
         NodeOutputs = new(),
         ShouldDoTheThing = true

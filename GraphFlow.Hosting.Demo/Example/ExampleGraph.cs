@@ -32,8 +32,13 @@ namespace GraphFlow.Hosting.Demo
     //  "shouldDoTheThing": true
     //}
 
-    public class ExampleGraph
+    public class ExampleGraph : IHostedGraph<ExampleGraphStateObject>
     {
+        public string Name => "example";
+        public string DisplayName => "Example graph";
+        public string Description => "A conditional graph with a loop and two execution paths.";
+        public ExampleGraphStateObject ExampleInput => ExampleGraphStateObject.DefaultValue();
+
         private GraphBuilder<ExampleGraphStateObject> _graphBuilder;
 
         public ExampleGraph(GraphBuilder<ExampleGraphStateObject> graphBuilder)

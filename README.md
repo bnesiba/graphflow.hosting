@@ -73,3 +73,6 @@ Execution is synchronous. Disconnect stops observation, not the graph. There is 
 Earlier browser verification covered both sample branches, final-only execution, invalid input, failed graphs, snapshot inspection, and live delayed execution. UI screenshots remain in ui-tests/. Packaging validation exercises the same embedded assets without changing their behavior.
 
 Final-only and streamed runs now both render a post-run graph from execution metadata. Select nodes/edges for counts; loop revisits and rejected edge evaluations are retained. See the package README's post-run graph section. Validation now includes 27 .NET tests, including summary mapping, failed nodes, rejected edges, and JSON/SSE parity. Browser verification covered both final-only example paths. Preview: ui-tests/post-run-preview.png.
+
+The demo now implements IHostedGraph<TState> on both graph definitions. Program.cs uses `.AddGraph<ExampleGraph, ExampleGraphStateObject>()` and `.AddGraph<SlowExampleGraph, ExampleGraphStateObject>()`; names, descriptions, and example input live with the graph classes. The overload registers each definition as scoped and reuses the original factory registration. The interface exposes instance properties directly, with no name override or GraphPresentation required. See the package README for metadata scope and lifecycle details.
+

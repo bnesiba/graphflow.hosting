@@ -72,3 +72,35 @@ The UI is served from embedded resources: no frontend installation, CDN, or stat
 Both JSON results and SSE end events now include `execution`, an aggregate summary keyed by node/edge name. Nodes report executions, failures, and incomplete attempts. Edges report evaluations, followed/rejected counts, failures, and incomplete attempts. Only visited items are included; untouched topology remains unhighlighted. Construction/input failures may return execution=null when no metadata is available.
 
 After either run mode the Explorer renders this summary: green for visited nodes/followed edges, dashed for edges evaluated but never followed, red for failures, and amber for incomplete attempts. Select an item to inspect counts, including repeated visits through loops. Live edge highlighting still means evaluation; final highlighting uses the engine's recorded evaluation result. Summary counts do not represent a chronological trace or replay.
+
+## Self-contained graph definitions
+
+Implement IHostedGraph<TState> with ordinary instance properties and a graph factory method:
+
+```csharp
+public sealed class CounterGraph(GraphBuilder<CounterState> builder) : IHostedGraph<CounterState>
+{
+    public string Name => "counter";
+    public string DisplayName => "Counter";
+    public string Description => "Adds one to the input value.";
+    public CounterState ExampleInput => new();
+
+    public ExecutableGraph<CounterState> GetGraph()
+    {
+        var graph = builder.GetExecutableGraph();
+        graph.AddNode("increment", state => { state.Value++; return state; });
+        graph.SetStartNode("increment");
+        return graph;
+    }
+}
+
+builder.Services.AddGraphFlowHosting().AddGraph<CounterGraph, CounterState>();
+```
+
+No separate AddScoped, name argument, static members, or GraphPresentation object is required. DisplayName, Description, and ExampleInput may return null. The overload uses the same internal registration/execution implementation as the original factory overload.
+
+The definition is registered with TryAddScoped, respecting pre-existing application registrations. When the catalog/runner is first resolved, hosting creates a temporary scope, resolves the definition through DI, copies its metadata and snapshots its example input, then disposes that scope. It does not call GetGraph at that point. Subsequent listing uses the snapshot. Duplicate or blank names supplied by definitions are rejected during catalog initialization, once their instance properties can be read.
+
+Discovery and execution each resolve a new definition in their own scope and call GetGraph. Do not capture a scoped definition in a singleton or return a shared executable graph. Other constructor dependencies must be registered normally. Metadata may use injected services but is a stable catalog snapshot, not per-request data; constructors and metadata getters must be safe without an HTTP request. Scoped/transient registrations are appropriate for definitions that consume scoped dependencies.
+
+The original factory overload remains available for existing graph types and explicit naming. GraphPresentation remains part of that overload, but is not part of IHostedGraph.
