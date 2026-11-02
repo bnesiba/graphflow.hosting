@@ -4,7 +4,7 @@ Prototype hosting for GraphFlow on ASP.NET Core / .NET 10. Provides named graph 
 
 ## Setup
 
-Install `bcn.GraphFlow.Hosting.AspNetCore` and use the `GraphFlow.Hosting` namespace. This preview requires `bcn.GraphFlow` 1.1.0, currently supplied in this repository's local package feed.
+Install `bcn.GraphFlow.Hosting.AspNetCore` and use the `GraphFlow.Hosting` namespace. This preview requires `bcn.GraphFlow` 1.1.0.
 
 ```csharp
 using GraphFlow.Hosting;
