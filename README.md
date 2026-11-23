@@ -4,7 +4,7 @@ Expose your C# graphs through a .NET 10 Web API. Clients can discover registered
 
 ## Install
 
-The hosting package is currently a local preview. With a NuGet source containing the preview and its `bcn.GraphFlow` 1.1.0 dependency, run this command in your ASP.NET Core project:
+The hosting package is currently a local preview. With the hosting preview source and NuGet.org enabled, run this command in your ASP.NET Core project:
 
 ```sh
 dotnet add package bcn.GraphFlow.Hosting.AspNetCore --prerelease

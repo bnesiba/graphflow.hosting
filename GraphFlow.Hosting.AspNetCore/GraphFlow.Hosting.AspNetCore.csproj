@@ -13,7 +13,7 @@
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="bcn.GraphFlow" Version="1.1.0" />
+    <PackageReference Include="bcn.GraphFlow" Version="2.0.2" />
     <EmbeddedResource Include="UI/*" LogicalName="GraphFlow.Hosting.UI.%(Filename)%(Extension)" />
     <None Include="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
